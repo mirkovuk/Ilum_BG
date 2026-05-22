@@ -421,8 +421,8 @@ function renderToCanvas(ctx, W, H){
   seedPerm(seed);
   const chaos=(P.windChaos&&windKmh!==null)?Math.min(windKmh/28,1):P.chaos;
   const ns=P.noise*0.005;
-  const baseUnit=Math.min(W,H)*0.048*P.size;
-  const spacing=baseUnit*2.6*P.spacing;
+  const baseUnit=Math.min(W,H)*0.065*P.size;
+  const spacing=baseUnit*2.4*P.spacing;
   const cols=Math.ceil(W/spacing)+3, rows=Math.ceil(H/spacing)+3;
   const gdir=parseInt(P.gradDir);
 
@@ -456,25 +456,29 @@ function renderToCanvas(ctx, W, H){
 
       // Shape morphology: t 0→1 maps to shape 0→4
       const si=Math.min(4,Math.floor(t*4.999));
-      const sz=baseUnit*(0.3+t*0.8);
+      // Size: peak shapes are larger and overlap to fill gaps
+      const sz=baseUnit*(0.32+t*1.1);
 
-      // Rotation
+      // Rotation — broad low-freq sample couples neighbours into shared regions
       let rotField;
       if(P.arrangement==='flow'){
-        // Flow field: rotation driven by single-layer noise angle
-        const angle=sn(nx+200,ny+200)*Math.PI*2*chaos;
-        rotField=angle;
+        const localAngle=sn(nx+200,ny+200)*Math.PI*2*chaos;
+        const broadAngle=sn(nx*0.25+200,ny*0.25+200)*Math.PI*2*chaos;
+        rotField=localAngle*0.35+broadAngle*0.65;
       } else if(P.arrangement==='radial'){
-        // Radial: shapes point outward from centre
         const dx=cx-W/2, dy=cy-H/2;
         const baseAngle=Math.atan2(dy,dx)+Math.PI/2;
-        rotField=baseAngle+fbm(nx+50,ny+50,2)*0.8*chaos;
+        const localRot=fbm(nx+50,ny+50,2)*0.8*chaos;
+        const broadRot=fbm(nx*0.3+50,ny*0.3+50,2)*0.8*chaos;
+        rotField=baseAngle+localRot*0.35+broadRot*0.65;
       } else {
-        rotField=fbm(nx+100,ny+50,3)*Math.PI*2*chaos;
+        const localRot=fbm(nx+100,ny+50,3)*Math.PI*2*chaos;
+        const broadRot=fbm(nx*0.28+100,ny*0.28+50,2)*Math.PI*2*chaos;
+        rotField=localRot*0.4+broadRot*0.6;
       }
 
-      // Alpha
-      const alpha=0.18+t*0.78;
+      // Alpha — full opacity at dense peaks so bg is buried
+      const alpha=t>0.82 ? 1.0 : 0.15+t*0.82;
       ctx.globalAlpha=alpha;
       drawShape(ctx,si,cx,cy,sz,rotField,P.fgColor);
       ctx.globalAlpha=1;
@@ -568,8 +572,8 @@ async function doExport(fmt){
     seedPerm(seed);
     const chaos=(P.windChaos&&windKmh!==null)?Math.min(windKmh/28,1):P.chaos;
     const ns=P.noise*0.005;
-    const baseUnit=Math.min(W,H)*0.048*P.size;
-    const spacing=baseUnit*2.6*P.spacing;
+    const baseUnit=Math.min(W,H)*0.065*P.size;
+    const spacing=baseUnit*2.4*P.spacing;
     const cols=Math.ceil(W/spacing)+3, rows=Math.ceil(H/spacing)+3;
     const gdir=parseInt(P.gradDir);
     let out=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
@@ -588,11 +592,15 @@ async function doExport(fmt){
         let t=Math.pow(1-(landscape/threshold),P.drama*2.5);
         t=Math.max(0,Math.min(1,t));
         const si=Math.min(4,Math.floor(t*4.999));
-        const sz=baseUnit*(0.3+t*0.8);
+        const sz=baseUnit*(0.32+t*1.1);
         let rotField;
-        if(P.arrangement==='flow') rotField=sn(nx*ns*200,ny*ns*200)*Math.PI*2*chaos;
-        else if(P.arrangement==='radial') rotField=Math.atan2(cy-H/2,cx-W/2)+Math.PI/2+fbm(nx+50,ny+50,2)*0.8*chaos;
-        else rotField=fbm(nx+100,ny+50,3)*Math.PI*2*chaos;
+        if(P.arrangement==='flow'){
+          rotField=sn(nx+200,ny+200)*Math.PI*2*chaos*0.35+sn(nx*0.25+200,ny*0.25+200)*Math.PI*2*chaos*0.65;
+        } else if(P.arrangement==='radial'){
+          rotField=Math.atan2(cy-H/2,cx-W/2)+Math.PI/2+(fbm(nx+50,ny+50,2)*0.35+fbm(nx*0.3+50,ny*0.3+50,2)*0.65)*0.8*chaos;
+        } else {
+          rotField=fbm(nx+100,ny+50,3)*Math.PI*2*chaos*0.4+fbm(nx*0.28+100,ny*0.28+50,2)*Math.PI*2*chaos*0.6;
+        }
         const s=SHAPES[si];
         const sc=(sz/Math.max(s.vw,s.vh));
         const op=(0.18+t*0.78).toFixed(2);
