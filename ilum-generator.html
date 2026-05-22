@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ILUM — Background Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f2f0eb;
+    --panel: #e8e5de;
+    --panel-dark: #d4d0c8;
+    --border: #b8b4aa;
+    --text: #1a1a18;
+    --text-muted: #6a6860;
+    --text-dim: #9a9890;
+    --accent: #ffec00;
+    --btn-bg: #2a2a28;
+    --btn-text: #f2f0eb;
+    --font: 'DM Mono', monospace;
+    --row-h: 36px;
+  }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+  body { display: flex; flex-direction: column; font-family: var(--font); font-size: 11px; color: var(--text); }
+
+  /* ── HEADER ── */
+  header {
+    height: 44px; min-height: 44px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 20px; gap: 16px;
+    flex-shrink: 0;
+  }
+  .logo { font-size: 13px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; }
+  .logo span { color: var(--text-muted); }
+  .header-pill {
+    font-size: 10px; padding: 2px 8px; border: 1px solid var(--border);
+    border-radius: 20px; color: var(--text-muted); margin-left: auto;
+  }
+  .live-dot { display:inline-block; width:5px; height:5px; border-radius:50%; background:#5b9; margin-right:4px; animation: pu 2s infinite; }
+  @keyframes pu { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  /* ── LAYOUT ── */
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .sidebar {
+    width: 260px; min-width: 260px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow-y: auto; overflow-x: hidden;
+    flex-shrink: 0;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .canvas-wrap { flex: 1; position: relative; overflow: hidden; background: #fff; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* ── SECTION HEADERS ── */
+  .sec {
+    padding: 10px 16px 6px;
+    font-size: 9px; font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-dark);
+  }
+
+  /* ── ROWS ── */
+  .row {
+    display: flex; align-items: center;
+    padding: 0 16px; height: var(--row-h);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    gap: 8px;
+  }
+  .row:last-child { border-bottom: none; }
+  .row-label { flex: 0 0 100px; color: var(--text-muted); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-val { flex: 0 0 32px; text-align: right; font-size: 10px; color: var(--text); font-weight: 500; }
+  .row-ctrl { flex: 1; }
+
+  /* ── SLIDERS ── */
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 2px;
+    background: var(--border);
+    border-radius: 1px; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--text); border: none; cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--text); border: none; cursor: pointer;
+  }
+
+  /* ── COLOUR PICKERS ── */
+  .colour-row { display: flex; align-items: center; padding: 8px 16px; gap: 10px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+  .colour-swatch {
+    width: 28px; height: 28px; border-radius: 4px;
+    border: 1px solid var(--border); cursor: pointer;
+    position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  .colour-swatch input[type=color] {
+    position: absolute; inset: -4px; width: calc(100%+8px); height: calc(100%+8px);
+    border: none; outline: none; cursor: pointer; opacity: 0;
+  }
+  .colour-label { font-size: 10px; color: var(--text-muted); flex: 1; }
+  .colour-hex { font-size: 10px; font-weight: 500; color: var(--text); width: 62px; font-family: var(--font); }
+
+  /* ── DROPDOWN ── */
+  select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--font); font-size: 10px;
+    padding: 3px 6px; border-radius: 3px; cursor: pointer; outline: none;
+    -webkit-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236a6860'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 6px center;
+    padding-right: 20px;
+  }
+  select:focus { border-color: var(--text); }
+
+  /* ── TOGGLE ── */
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+  .toggle {
+    position: relative; width: 28px; height: 14px; flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0; background: var(--border);
+    border-radius: 7px; cursor: pointer; transition: background 0.2s;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute;
+    width: 10px; height: 10px; left: 2px; top: 2px;
+    background: white; border-radius: 50%; transition: transform 0.2s;
+  }
+  .toggle input:checked + .toggle-slider { background: var(--btn-bg); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(14px); }
+
+  /* ── BUTTONS ── */
+  .btn-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .btn {
+    flex: 1; height: 32px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-family: var(--font);
+    font-size: 10px; cursor: pointer; border-radius: 3px; letter-spacing: 0.04em;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn:hover { background: var(--panel-dark); border-color: var(--text-muted); }
+  .btn.primary { background: var(--btn-bg); color: var(--btn-text); border-color: var(--btn-bg); }
+  .btn.primary:hover { background: #3a3a38; }
+
+  /* ── EXPORT OPTIONS ── */
+  .export-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .exp-btn {
+    height: 28px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-family: var(--font);
+    font-size: 9px; cursor: pointer; border-radius: 3px; letter-spacing: 0.05em;
+    text-transform: uppercase; transition: background 0.15s;
+  }
+  .exp-btn:hover { background: var(--panel-dark); }
+  .exp-btn.active { background: var(--btn-bg); color: var(--btn-text); border-color: var(--btn-bg); }
+
+  /* ── CUSTOM SIZE INPUT ── */
+  .size-inputs { display: flex; align-items: center; gap: 6px; flex: 1; }
+  .size-input {
+    width: 52px; height: 24px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-family: var(--font);
+    font-size: 10px; text-align: center; border-radius: 3px; outline: none;
+  }
+  .size-input:focus { border-color: var(--text); }
+  .size-sep { color: var(--text-dim); font-size: 10px; }
+
+  /* ── SPACER ── */
+  .spacer { flex: 1; }
+
+  /* ── CANVAS OVERLAY ── */
+  .canvas-label {
+    position: absolute; bottom: 12px; right: 14px;
+    font-family: var(--font); font-size: 9px; color: rgba(120,118,112,0.6);
+    letter-spacing: 0.08em; pointer-events: none;
+  }
+  .rendering-overlay {
+    position: absolute; inset: 0; background: rgba(242,240,235,0.5);
+    display: none; align-items: center; justify-content: center;
+    font-size: 10px; color: var(--text-muted); letter-spacing: 0.1em;
+  }
+  .rendering-overlay.show { display: flex; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ILUM <span>/ Background Generator</span></div>
+  <div class="header-pill" id="weatherPill">fetching live data…</div>
+</header>
+
+<div class="main">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+
+    <div class="sec">Pattern</div>
+    <div class="row">
+      <span class="row-label">arrangement</span>
+      <div class="row-ctrl">
+        <select id="sArrangement">
+          <option value="landscape">Landscape</option>
+          <option value="flow">Flow Field</option>
+          <option value="radial">Radial</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <span class="row-label">gradient dir</span>
+      <div class="row-ctrl">
+        <select id="sGradDir">
+          <option value="1">→ right</option>
+          <option value="2">← left</option>
+          <option value="3">↓ down</option>
+          <option value="4">↑ up</option>
+          <option value="0">radial</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec">Parameters</div>
+    <div class="row">
+      <span class="row-label">density</span>
+      <div class="row-ctrl"><input type="range" id="sDensity" min="0.05" max="0.98" step="0.01" value="0.58"></div>
+      <span class="row-val" id="vDensity">0.58</span>
+    </div>
+    <div class="row">
+      <span class="row-label">size</span>
+      <div class="row-ctrl"><input type="range" id="sSize" min="0.15" max="1.0" step="0.01" value="0.42"></div>
+      <span class="row-val" id="vSize">0.42</span>
+    </div>
+    <div class="row">
+      <span class="row-label">noise scale</span>
+      <div class="row-ctrl"><input type="range" id="sNoise" min="0.5" max="6" step="0.05" value="2.2"></div>
+      <span class="row-val" id="vNoise">2.20</span>
+    </div>
+    <div class="row">
+      <span class="row-label">spacing</span>
+      <div class="row-ctrl"><input type="range" id="sSpacing" min="0.5" max="2.5" step="0.05" value="1.0"></div>
+      <span class="row-val" id="vSpacing">1.00</span>
+    </div>
+    <div class="row">
+      <span class="row-label">drama</span>
+      <div class="row-ctrl"><input type="range" id="sDrama" min="0.1" max="1.0" step="0.01" value="0.65"></div>
+      <span class="row-val" id="vDrama">0.65</span>
+    </div>
+    <div class="row">
+      <span class="row-label">wind chaos</span>
+      <div class="row-ctrl"><input type="range" id="sChaos" min="0" max="1" step="0.01" value="0.45"></div>
+      <span class="row-val" id="vChaos">0.45</span>
+    </div>
+    <div class="row">
+      <span class="row-label">solid edge</span>
+      <div class="row-ctrl"><input type="range" id="sSolidEdge" min="0" max="1" step="0.01" value="0.0"></div>
+      <span class="row-val" id="vSolidEdge">0%</span>
+    </div>
+    <div class="row">
+      <span class="row-label">grain</span>
+      <div class="row-ctrl"><input type="range" id="sGrain" min="0" max="1" step="0.01" value="0.28"></div>
+      <span class="row-val" id="vGrain">0.28</span>
+    </div>
+
+    <div class="sec">Colour</div>
+    <div class="colour-row">
+      <div class="colour-swatch" id="swBg" style="background:#ffffff">
+        <input type="color" id="cBg" value="#ffffff">
+      </div>
+      <span class="colour-label">background</span>
+      <span class="colour-hex" id="hBg">#ffffff</span>
+    </div>
+    <div class="colour-row">
+      <div class="colour-swatch" id="swFg" style="background:#ffec00">
+        <input type="color" id="cFg" value="#ffec00">
+      </div>
+      <span class="colour-label">foreground</span>
+      <span class="colour-hex" id="hFg">#ffec00</span>
+    </div>
+
+    <div class="sec">Live Data — Punta Arenas</div>
+    <div class="row">
+      <span class="row-label">wind → chaos</span>
+      <div class="row-ctrl">
+        <label class="toggle">
+          <input type="checkbox" id="tWindChaos" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="sec">Export</div>
+    <div class="export-grid">
+      <button class="exp-btn active" data-preset="screen" id="expScreen">fullscreen</button>
+      <button class="exp-btn" data-preset="1920x1080l">1920×1080 L</button>
+      <button class="exp-btn" data-preset="1920x1080p">1080×1920 P</button>
+      <button class="exp-btn" data-preset="custom">custom…</button>
+    </div>
+    <div class="row" id="customRow" style="display:none">
+      <span class="row-label">dimensions</span>
+      <div class="row-ctrl">
+        <div class="size-inputs">
+          <input class="size-input" id="custW" type="number" value="2560" min="100" max="8000">
+          <span class="size-sep">×</span>
+          <input class="size-input" id="custH" type="number" value="1440" min="100" max="8000">
+        </div>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="btn-row">
+      <button class="btn" id="btnRegen">regenerate ↻</button>
+      <button class="btn primary" id="btnExport">export ↓</button>
+    </div>
+
+  </aside>
+
+  <!-- ── CANVAS ── -->
+  <div class="canvas-wrap">
+    <canvas id="c"></canvas>
+    <div class="canvas-label" id="canvasLabel">preview</div>
+    <div class="rendering-overlay" id="renderingOverlay">rendering…</div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// SIMPLEX NOISE
+// ═══════════════════════════════════════════════
+const G2=0.5*(Math.sqrt(3)-1), G2b=(3-Math.sqrt(3))/6;
+const perm=new Uint8Array(512);
+function seedPerm(s){
+  const a=new Uint8Array(256);
+  for(let i=0;i<256;i++)a[i]=i;
+  for(let i=255;i>0;i--){s=(s*1664525+1013904223)>>>0;const j=s%(i+1);[a[i],a[j]]=[a[j],a[i]];}
+  for(let i=0;i<512;i++)perm[i]=a[i&255];
+}
+function g2(h,x,y){h&=7;const u=h<4?x:y,v=h<4?y:x;return((h&1)?-u:u)+((h&2)?-2*v:2*v);}
+function sn(x,y){
+  const s=(x+y)*G2,i=Math.floor(x+s),j=Math.floor(y+s),t=(i+j)*G2b;
+  const X0=i-t,Y0=j-t,x0=x-X0,y0=y-Y0,i1=x0>y0?1:0,j1=x0>y0?0:1;
+  const x1=x0-i1+G2b,y1=y0-j1+G2b,x2=x0-1+2*G2b,y2=y0-1+2*G2b;
+  const ii=i&255,jj=j&255;let n=0;
+  let t0=.5-x0*x0-y0*y0;if(t0>0){t0*=t0;n+=t0*t0*g2(perm[ii+perm[jj]],x0,y0);}
+  let t1=.5-x1*x1-y1*y1;if(t1>0){t1*=t1;n+=t1*t1*g2(perm[ii+i1+perm[jj+j1]],x1,y1);}
+  let t2=.5-x2*x2-y2*y2;if(t2>0){t2*=t2;n+=t2*t2*g2(perm[ii+1+perm[jj+1]],x2,y2);}
+  return 35*n;
+}
+function fbm(x,y,o){let v=0,a=0.5,f=1;for(let i=0;i<o;i++){v+=a*sn(x*f,y*f);a*=0.5;f*=2.1;}return v;}
+
+// ═══════════════════════════════════════════════
+// SHAPES  (from SVG files — normalised)
+// ═══════════════════════════════════════════════
+const SHAPES=[
+  {vw:76.59,  vh:67.7,  d:"M31.16,58.15l-17.85,9c-2.41,1.21-5.34.34-6.69-2l-2.81-4.87-3.12-5.41c-1.35-2.34-.64-5.32,1.62-6.8l16.72-10.96c4.2-2.75,6.85-7.34,7.14-12.36l1.13-19.96C27.44,2.11,29.66,0,32.36,0h5.94s5.94,0,5.94,0c2.7,0,4.92,2.11,5.08,4.8l1.13,19.96c.28,5.02,2.93,9.6,7.14,12.36l16.72,10.96c2.26,1.48,2.97,4.46,1.62,6.8l-3.1,5.37-2.83,4.91c-1.35,2.34-4.29,3.21-6.69,2l-17.85-9c-4.49-2.26-9.78-2.26-14.27,0Z"},
+  {vw:117.47, vh:103.2, d:"M53.06,84.9l-41.47,17.85c-2.55,1.1-5.51.11-6.89-2.29l-2.03-3.51-1.94-3.36c-1.39-2.4-.76-5.46,1.47-7.11l16.58-12.37,19.61-14.62c3.16-2.36,5.21-5.91,5.67-9.83l5.28-44.84C49.67,2.07,52,0,54.77,0h3.96s3.96,0,3.96,0c2.77,0,5.1,2.07,5.43,4.83l5.28,44.84c.46,3.92,2.51,7.47,5.67,9.83l36.19,26.99c2.22,1.66,2.85,4.71,1.47,7.11l-2.12,3.67-1.85,3.2c-1.39,2.4-4.35,3.38-6.89,2.29l-41.47-17.85c-3.62-1.56-7.73-1.56-11.35,0Z"},
+  {vw:115,    vh:102.35,d:"M55.38,99.37l-36.4,2.95c-3.97.32-7.77-1.67-9.76-5.12l-4.79-8.3-3.04-5.26c-1.99-3.45-1.82-7.74.45-11.02l20.76-30.05c.8-1.16,1.51-2.39,2.12-3.67l8.97-18.93,6.67-14.07c1.71-3.6,5.33-5.9,9.32-5.9h15.66c3.98,0,7.61,2.3,9.32,5.9l15.64,33c.61,1.28,1.31,2.51,2.12,3.67l20.76,30.05c2.26,3.28,2.44,7.57.45,11.02l-3.49,6.04-4.34,7.52c-1.99,3.45-5.79,5.44-9.76,5.12l-36.4-2.95c-1.41-.11-2.83-.11-4.24,0Z"},
+  {vw:142.79, vh:140.68,d:"M61.96,139.59l-41.68-9.73c-6.89-1.61-12.81-6-16.36-12.13l-.28-.49-.21-.36c-3.54-6.13-4.38-13.46-2.33-20.23l6.73-22.2,5.68-18.76c1.85-6.1,5.08-11.7,9.44-16.35l29.27-31.23C57.06,2.93,63.82,0,70.9,0h.99c7.08,0,13.84,2.93,18.69,8.1l29.27,31.23c4.36,4.65,7.59,10.25,9.44,16.35l12.41,40.96c2.05,6.78,1.21,14.1-2.33,20.23l-.49.85h0c-3.54,6.13-9.46,10.52-16.36,12.13l-41.68,9.73c-6.21,1.45-12.67,1.45-18.88,0Z"},
+  {vw:156.56, vh:171.01,d:"M64.6,167.69l-50.51-28.56c-3.98-2.25-7.29-5.53-9.57-9.49l-.6-1.04-.48-.83C1.14,123.81-.04,119.31,0,114.74l.52-58.02c.04-4.42,1.22-8.75,3.43-12.57l.34-.59.74-1.28c2.21-3.83,5.37-7.01,9.17-9.26l22.27-13.13L64.2,3.55c3.94-2.32,8.43-3.55,13-3.55h2.16c4.57,0,9.06,1.22,13,3.55l49.99,29.47c3.81,2.24,6.97,5.43,9.17,9.26h0s1.08,1.87,1.08,1.87c2.21,3.83,3.39,8.16,3.43,12.57l.52,58.02c.04,4.57-1.14,9.08-3.43,13.04l-.71,1.24-.37.64c-2.29,3.96-5.59,7.24-9.57,9.49l-50.51,28.56c-3.85,2.17-8.19,3.32-12.6,3.32h-2.16c-4.42,0-8.76-1.14-12.6-3.32Z"},
+];
+let shapePaths=null;
+function buildPaths(){shapePaths=SHAPES.map(s=>({p2d:new Path2D(s.d),vw:s.vw,vh:s.vh,d:s.d}));}
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let seed=Math.random()*99999|0;
+let windKmh=null, tempC=null;
+let rtimer=null;
+let P={
+  density:0.58, size:0.42, noise:2.2, spacing:1.0,
+  drama:0.65, chaos:0.45, solidEdge:0.0, grain:0.28,
+  gradDir:1, arrangement:'landscape',
+  bgColor:'#ffffff', fgColor:'#ffec00',
+  windChaos:true
+};
+let exportPreset='screen';
+let custW=2560, custH=1440;
+
+// ═══════════════════════════════════════════════
+// GRADIENT WEIGHT
+// ═══════════════════════════════════════════════
+function gradW(x,y,W,H,mode){
+  if(mode===0){const dx=x-W/2,dy=y-H/2;return Math.sqrt(dx*dx+dy*dy)/Math.sqrt(W*W+H*H)*1.7;}
+  if(mode===1)return x/W;
+  if(mode===2)return 1-x/W;
+  if(mode===3)return y/H;
+  return 1-y/H;
+}
+
+// ═══════════════════════════════════════════════
+// DRAW SHAPE
+// ═══════════════════════════════════════════════
+function drawShape(ctx,idx,cx,cy,sz,angle,color){
+  const s=shapePaths[idx];
+  const sc=sz/Math.max(s.vw,s.vh);
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(angle);
+  ctx.scale(sc,sc);
+  ctx.translate(-s.vw/2,-s.vh/2);
+  ctx.fillStyle=color;
+  ctx.fill(s.p2d);
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════
+// CORE RENDER
+// ═══════════════════════════════════════════════
+function renderToCanvas(ctx, W, H){
+  if(!shapePaths) buildPaths();
+  seedPerm(seed);
+  const chaos=(P.windChaos&&windKmh!==null)?Math.min(windKmh/28,1):P.chaos;
+  const ns=P.noise*0.005;
+  const baseUnit=Math.min(W,H)*0.048*P.size;
+  const spacing=baseUnit*2.6*P.spacing;
+  const cols=Math.ceil(W/spacing)+3, rows=Math.ceil(H/spacing)+3;
+  const gdir=parseInt(P.gradDir);
+
+  // Background
+  ctx.fillStyle=P.bgColor;
+  ctx.fillRect(0,0,W,H);
+
+  // Solid edge band — painted BEFORE shapes but clipped to edge zone
+  // actual paint after shapes
+  // (we'll composite the solid edge on top at the end)
+
+  // Shapes pass
+  for(let ci=0;ci<cols;ci++){
+    for(let ri=0;ri<rows;ri++){
+      const hexOff=(ri%2)*spacing*0.5;
+      const cx=(ci-0.5)*spacing+hexOff;
+      const cy=(ri-0.5)*spacing;
+      if(cx<-spacing||cx>W+spacing||cy<-spacing||cy>H+spacing) continue;
+
+      const nx=cx*ns, ny=cy*ns;
+      const fA=(fbm(nx,ny,5)+1)*0.5;
+      const fB=(fbm(nx*2.3+17,ny*2.3+31,3)+1)*0.5;
+      const landscape=fA*0.7+fB*0.3;
+
+      const gw=gradW(cx,cy,W,H,gdir);
+      const threshold=P.density*(0.12+gw*0.92);
+      if(landscape>threshold) continue;
+
+      let t=Math.pow(1-(landscape/threshold), P.drama*2.5);
+      t=Math.max(0,Math.min(1,t));
+
+      // Shape morphology: t 0→1 maps to shape 0→4
+      const si=Math.min(4,Math.floor(t*4.999));
+      const sz=baseUnit*(0.3+t*0.8);
+
+      // Rotation
+      let rotField;
+      if(P.arrangement==='flow'){
+        // Flow field: rotation driven by single-layer noise angle
+        const angle=sn(nx+200,ny+200)*Math.PI*2*chaos;
+        rotField=angle;
+      } else if(P.arrangement==='radial'){
+        // Radial: shapes point outward from centre
+        const dx=cx-W/2, dy=cy-H/2;
+        const baseAngle=Math.atan2(dy,dx)+Math.PI/2;
+        rotField=baseAngle+fbm(nx+50,ny+50,2)*0.8*chaos;
+      } else {
+        rotField=fbm(nx+100,ny+50,3)*Math.PI*2*chaos;
+      }
+
+      // Alpha
+      const alpha=0.18+t*0.78;
+      ctx.globalAlpha=alpha;
+      drawShape(ctx,si,cx,cy,sz,rotField,P.fgColor);
+      ctx.globalAlpha=1;
+    }
+  }
+
+  // Solid edge band
+  if(P.solidEdge>0.005){
+    const band=P.solidEdge*0.5; // 0→0.5 of dimension
+    ctx.fillStyle=P.fgColor;
+    if(gdir===1){ // → right  →  solid on right edge
+      const x=W*(1-band);
+      ctx.fillRect(x,0,W-x,H);
+    } else if(gdir===2){ // ← left → solid on left
+      ctx.fillRect(0,0,W*band,H);
+    } else if(gdir===3){ // ↓ down → solid on bottom
+      const y=H*(1-band);
+      ctx.fillRect(0,y,W,H-y);
+    } else if(gdir===4){ // ↑ up → solid on top
+      ctx.fillRect(0,0,W,H*band);
+    } else { // radial → solid ring around edges
+      // draw a ring fade — use a radial gradient mask
+      const cx2=W/2,cy2=H/2;
+      const r=Math.max(W,H)*0.5;
+      const rInner=r*(1-band*1.4);
+      const grad=ctx.createRadialGradient(cx2,cy2,rInner,cx2,cy2,r);
+      grad.addColorStop(0,'rgba(0,0,0,0)');
+      grad.addColorStop(1,P.fgColor);
+      ctx.fillStyle=grad;
+      ctx.fillRect(0,0,W,H);
+    }
+  }
+
+  // Film grain
+  if(P.grain>0.01){
+    const id=ctx.getImageData(0,0,W,H);
+    const da=id.data, g=P.grain*55;
+    for(let i=0;i<da.length;i+=4){
+      const v=(Math.random()-.5)*g;
+      da[i]=Math.max(0,Math.min(255,da[i]+v));
+      da[i+1]=Math.max(0,Math.min(255,da[i+1]+v));
+      da[i+2]=Math.max(0,Math.min(255,da[i+2]+v));
+    }
+    ctx.putImageData(id,0,0);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// PREVIEW RENDER
+// ═══════════════════════════════════════════════
+function render(){
+  const cv=document.getElementById('c');
+  const wrap=cv.parentElement;
+  const W=wrap.clientWidth, H=wrap.clientHeight;
+  const dpr=Math.min(devicePixelRatio||1,2);
+  cv.width=W*dpr; cv.height=H*dpr;
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  const ctx=cv.getContext('2d');
+  ctx.scale(dpr,dpr);
+  renderToCanvas(ctx,W,H);
+  document.getElementById('canvasLabel').textContent=`preview  ${W}×${H}`;
+}
+
+function sched(){
+  if(rtimer) clearTimeout(rtimer);
+  rtimer=setTimeout(render,40);
+}
+
+// ═══════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════
+async function doExport(fmt){
+  const overlay=document.getElementById('renderingOverlay');
+  overlay.classList.add('show');
+  await new Promise(r=>setTimeout(r,20));
+
+  let W,H;
+  if(exportPreset==='screen'){
+    W=window.screen.width*devicePixelRatio; H=window.screen.height*devicePixelRatio;
+  } else if(exportPreset==='1920x1080l'){ W=1920;H=1080;
+  } else if(exportPreset==='1920x1080p'){ W=1080;H=1920;
+  } else { W=parseInt(custW)||2560; H=parseInt(custH)||1440; }
+
+  const offscreen=document.createElement('canvas');
+  offscreen.width=W; offscreen.height=H;
+  const ctx=offscreen.getContext('2d');
+  renderToCanvas(ctx,W,H);
+
+  if(fmt==='svg'){
+    // Build SVG string
+    seedPerm(seed);
+    const chaos=(P.windChaos&&windKmh!==null)?Math.min(windKmh/28,1):P.chaos;
+    const ns=P.noise*0.005;
+    const baseUnit=Math.min(W,H)*0.048*P.size;
+    const spacing=baseUnit*2.6*P.spacing;
+    const cols=Math.ceil(W/spacing)+3, rows=Math.ceil(H/spacing)+3;
+    const gdir=parseInt(P.gradDir);
+    let out=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+    out+=`<rect width="${W}" height="${H}" fill="${P.bgColor}"/>`;
+    for(let ci=0;ci<cols;ci++){
+      for(let ri=0;ri<rows;ri++){
+        const hexOff=(ri%2)*spacing*0.5;
+        const cx=(ci-0.5)*spacing+hexOff, cy=(ri-0.5)*spacing;
+        if(cx<-spacing||cx>W+spacing||cy<-spacing||cy>H+spacing) continue;
+        const nx=cx*ns,ny=cy*ns;
+        const fA=(fbm(nx,ny,5)+1)*0.5, fB=(fbm(nx*2.3+17,ny*2.3+31,3)+1)*0.5;
+        const landscape=fA*0.7+fB*0.3;
+        const gw=gradW(cx,cy,W,H,gdir);
+        const threshold=P.density*(0.12+gw*0.92);
+        if(landscape>threshold) continue;
+        let t=Math.pow(1-(landscape/threshold),P.drama*2.5);
+        t=Math.max(0,Math.min(1,t));
+        const si=Math.min(4,Math.floor(t*4.999));
+        const sz=baseUnit*(0.3+t*0.8);
+        let rotField;
+        if(P.arrangement==='flow') rotField=sn(nx*ns*200,ny*ns*200)*Math.PI*2*chaos;
+        else if(P.arrangement==='radial') rotField=Math.atan2(cy-H/2,cx-W/2)+Math.PI/2+fbm(nx+50,ny+50,2)*0.8*chaos;
+        else rotField=fbm(nx+100,ny+50,3)*Math.PI*2*chaos;
+        const s=SHAPES[si];
+        const sc=(sz/Math.max(s.vw,s.vh));
+        const op=(0.18+t*0.78).toFixed(2);
+        const deg=(rotField*180/Math.PI).toFixed(1);
+        out+=`<g transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${deg}) scale(${sc.toFixed(4)}) translate(${(-s.vw/2).toFixed(1)},${(-s.vh/2).toFixed(1)})" opacity="${op}"><path d="${s.d}" fill="${P.fgColor}"/></g>`;
+      }
+    }
+    if(P.solidEdge>0.005){
+      const band=P.solidEdge*0.5;
+      const g=parseInt(P.gradDir);
+      if(g===1) out+=`<rect x="${(W*(1-band)).toFixed(1)}" y="0" width="${(W*band).toFixed(1)}" height="${H}" fill="${P.fgColor}"/>`;
+      else if(g===2) out+=`<rect x="0" y="0" width="${(W*band).toFixed(1)}" height="${H}" fill="${P.fgColor}"/>`;
+      else if(g===3) out+=`<rect x="0" y="${(H*(1-band)).toFixed(1)}" width="${W}" height="${(H*band).toFixed(1)}" fill="${P.fgColor}"/>`;
+      else if(g===4) out+=`<rect x="0" y="0" width="${W}" height="${(H*band).toFixed(1)}" fill="${P.fgColor}"/>`;
+    }
+    out+=`</svg>`;
+    const blob=new Blob([out],{type:'image/svg+xml'});
+    const a=document.createElement('a');a.download=`ilum-pattern-${W}x${H}.svg`;
+    a.href=URL.createObjectURL(blob);a.click();
+  } else {
+    offscreen.toBlob(blob=>{
+      const a=document.createElement('a');a.download=`ilum-pattern-${W}x${H}.png`;
+      a.href=URL.createObjectURL(blob);a.click();
+    },'image/png');
+  }
+  overlay.classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════
+// WEATHER
+// ═══════════════════════════════════════════════
+async function fetchWeather(){
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=-53.15&longitude=-70.91&current=windspeed_10m,temperature_2m');
+    const d=await r.json();
+    windKmh=d.current.windspeed_10m;
+    tempC=d.current.temperature_2m;
+    const pill=document.getElementById('weatherPill');
+    pill.innerHTML=`<span class="live-dot"></span>Punta Arenas — ${windKmh.toFixed(0)} km/h · ${tempC.toFixed(0)}°C`;
+    if(P.windChaos){
+      const mapped=Math.min(windKmh/28,1);
+      document.getElementById('sChaos').value=mapped.toFixed(2);
+      document.getElementById('vChaos').textContent=mapped.toFixed(2);
+      P.chaos=mapped;
+    }
+    sched();
+  }catch(e){
+    document.getElementById('weatherPill').textContent='weather unavailable';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// BIND CONTROLS
+// ═══════════════════════════════════════════════
+function bindSlider(id,key,valId,dec,fmt){
+  const el=document.getElementById(id);
+  el.addEventListener('input',e=>{
+    P[key]=parseFloat(e.target.value);
+    let display=parseFloat(e.target.value).toFixed(dec);
+    if(fmt==='pct') display=Math.round(parseFloat(e.target.value)*100)+'%';
+    document.getElementById(valId).textContent=display;
+    sched();
+  });
+}
+bindSlider('sDensity','density','vDensity',2);
+bindSlider('sSize','size','vSize',2);
+bindSlider('sNoise','noise','vNoise',2);
+bindSlider('sSpacing','spacing','vSpacing',2);
+bindSlider('sDrama','drama','vDrama',2);
+bindSlider('sChaos','chaos','vChaos',2);
+bindSlider('sSolidEdge','solidEdge','vSolidEdge',0,'pct');
+bindSlider('sGrain','grain','vGrain',2);
+
+document.getElementById('sChaos').addEventListener('input',()=>{ windKmh=null; });
+
+document.getElementById('sGradDir').addEventListener('change',e=>{P.gradDir=e.target.value;sched();});
+document.getElementById('sArrangement').addEventListener('change',e=>{P.arrangement=e.target.value;sched();});
+
+// Colour pickers
+function bindColour(pickerId,swatchId,hexId,pKey){
+  const picker=document.getElementById(pickerId);
+  const swatch=document.getElementById(swatchId);
+  const hexEl=document.getElementById(hexId);
+  picker.addEventListener('input',e=>{
+    P[pKey]=e.target.value;
+    swatch.style.background=e.target.value;
+    hexEl.textContent=e.target.value;
+    sched();
+  });
+}
+bindColour('cBg','swBg','hBg','bgColor');
+bindColour('cFg','swFg','hFg','fgColor');
+
+// Wind toggle
+document.getElementById('tWindChaos').addEventListener('change',e=>{
+  P.windChaos=e.target.checked;
+  if(P.windChaos&&windKmh!==null){
+    const mapped=Math.min(windKmh/28,1);
+    document.getElementById('sChaos').value=mapped.toFixed(2);
+    document.getElementById('vChaos').textContent=mapped.toFixed(2);
+    P.chaos=mapped;
+  }
+  sched();
+});
+
+// Export preset buttons
+document.querySelectorAll('.exp-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.exp-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    exportPreset=btn.dataset.preset;
+    document.getElementById('customRow').style.display=exportPreset==='custom'?'flex':'none';
+  });
+});
+document.getElementById('custW').addEventListener('change',e=>{custW=parseInt(e.target.value)||2560;});
+document.getElementById('custH').addEventListener('change',e=>{custH=parseInt(e.target.value)||1440;});
+
+// Main buttons
+document.getElementById('btnRegen').addEventListener('click',()=>{
+  seed=Math.random()*99999|0; sched();
+});
+document.getElementById('btnExport').addEventListener('click',()=>{
+  // Show a tiny format chooser inline
+  const fmt=confirm('Export as SVG? (OK = SVG, Cancel = PNG)') ? 'svg' : 'png';
+  doExport(fmt);
+});
+
+// Resize
+const ro=new ResizeObserver(()=>sched());
+ro.observe(document.querySelector('.canvas-wrap'));
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+buildPaths();
+sched();
+fetchWeather();
+</script>
+</body>
+</html>
